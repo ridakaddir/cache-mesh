@@ -1,0 +1,72 @@
+{
+  "name": "cache-mesh",
+  "version": "0.1.0",
+  "description": "Peer-to-peer in-memory cache replication for Node.js apps on Kubernetes. No broker, no sidecar.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./singleton": {
+      "types": "./dist/singleton.d.ts",
+      "import": "./dist/singleton.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "keywords": [
+    "cache",
+    "kubernetes",
+    "k8s",
+    "replication",
+    "lru",
+    "gossip",
+    "peer-to-peer",
+    "nodejs"
+  ],
+  "license": "MIT",
+  "author": "Rida Kaddir",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ridakaddir/cache-mesh.git"
+  },
+  "homepage": "https://github.com/ridakaddir/cache-mesh#readme",
+  "bugs": {
+    "url": "https://github.com/ridakaddir/cache-mesh/issues"
+  },
+  "dependencies": {
+    "undici": "^6.19.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.12",
+    "@changesets/changelog-github": "^0.6.0",
+    "@changesets/cli": "^2.30.0",
+    "@types/node": "^20.14.0",
+    "tsup": "^8.2.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

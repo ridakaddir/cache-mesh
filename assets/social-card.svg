@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" fill="none">
+  <!-- Background -->
+  <rect width="1280" height="640" fill="#0F172A"/>
+
+  <!-- Subtle grid pattern -->
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1E293B" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="1280" height="640" fill="url(#grid)"/>
+
+  <!-- Decorative mesh lines in background -->
+  <line x1="100" y1="100" x2="400" y2="300" stroke="#38BDF8" stroke-width="1" opacity="0.1"/>
+  <line x1="400" y1="300" x2="200" y2="500" stroke="#38BDF8" stroke-width="1" opacity="0.1"/>
+  <line x1="100" y1="100" x2="200" y2="500" stroke="#38BDF8" stroke-width="1" opacity="0.1"/>
+  <line x1="900" y1="150" x2="1100" y2="350" stroke="#38BDF8" stroke-width="1" opacity="0.1"/>
+  <line x1="1100" y1="350" x2="950" y2="520" stroke="#38BDF8" stroke-width="1" opacity="0.1"/>
+  <line x1="900" y1="150" x2="950" y2="520" stroke="#38BDF8" stroke-width="1" opacity="0.1"/>
+
+  <!-- Logo (inline, scaled) -->
+  <g transform="translate(540, 100) scale(0.55)">
+    <circle cx="128" cy="128" r="120" fill="#1E293B" stroke="#38BDF8" stroke-width="2"/>
+    <line x1="128" y1="60" x2="68" y2="175" stroke="#38BDF8" stroke-width="3" opacity="0.6"/>
+    <line x1="128" y1="60" x2="188" y2="175" stroke="#38BDF8" stroke-width="3" opacity="0.6"/>
+    <line x1="68" y1="175" x2="188" y2="175" stroke="#38BDF8" stroke-width="3" opacity="0.6"/>
+    <circle cx="128" cy="60" r="22" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5"/>
+    <circle cx="68" cy="175" r="22" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5"/>
+    <circle cx="188" cy="175" r="22" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5"/>
+    <rect x="118" y="52" width="20" height="4" rx="2" fill="#38BDF8"/>
+    <rect x="118" y="58" width="20" height="4" rx="2" fill="#38BDF8" opacity="0.7"/>
+    <rect x="118" y="64" width="20" height="4" rx="2" fill="#38BDF8" opacity="0.4"/>
+    <rect x="58" y="167" width="20" height="4" rx="2" fill="#38BDF8"/>
+    <rect x="58" y="173" width="20" height="4" rx="2" fill="#38BDF8" opacity="0.7"/>
+    <rect x="58" y="179" width="20" height="4" rx="2" fill="#38BDF8" opacity="0.4"/>
+    <rect x="178" y="167" width="20" height="4" rx="2" fill="#38BDF8"/>
+    <rect x="178" y="173" width="20" height="4" rx="2" fill="#38BDF8" opacity="0.7"/>
+    <rect x="178" y="179" width="20" height="4" rx="2" fill="#38BDF8" opacity="0.4"/>
+  </g>
+
+  <!-- Title -->
+  <text x="640" y="360" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="700" fill="#F8FAFC" letter-spacing="-1">cache-mesh</text>
+
+  <!-- Tagline -->
+  <text x="640" y="420" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#94A3B8">Peer-to-peer cache replication for Node.js on Kubernetes</text>
+
+  <!-- Badges row -->
+  <text x="640" y="480" text-anchor="middle" font-family="ui-monospace, monospace" font-size="16" fill="#38BDF8">No broker  ·  No sidecar  ·  No new service component</text>
+
+  <!-- Bottom accent line -->
+  <rect x="540" y="540" width="200" height="3" rx="1.5" fill="#38BDF8" opacity="0.5"/>
+</svg>

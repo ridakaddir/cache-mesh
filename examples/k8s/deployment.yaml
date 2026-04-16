@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cache-sync-secret
+  namespace: default
+type: Opaque
+stringData:
+  # Generate once: openssl rand -hex 32
+  hmac: "REPLACE_ME_WITH_A_RANDOM_32_BYTE_HEX"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/your-org/my-app:latest
+          ports:
+            - name: http
+              containerPort: 3000
+            - name: sync
+              containerPort: 7073
+          env:
+            # Downward API — cache-sync uses this to exclude itself from peer discovery.
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CACHE_SYNC_HOST
+              value: "my-app-sync.default.svc.cluster.local"
+            - name: CACHE_SYNC_PORT
+              value: "7073"
+            - name: CACHE_SYNC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cache-sync-secret
+                  key: hmac
+          readinessProbe:
+            httpGet:
+              port: sync
+              path: /sync/health
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              port: sync
+              path: /sync/health
+            periodSeconds: 10
+---
+# Your app's existing public Service stays as-is; listed here for completeness.
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: my-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

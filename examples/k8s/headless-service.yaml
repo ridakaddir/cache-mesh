@@ -1,0 +1,17 @@
+# Headless Service used only by cache-sync for peer discovery via DNS.
+# Keep your existing public ClusterIP Service for user traffic unchanged.
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-sync
+  namespace: default
+spec:
+  clusterIP: None                # headless — DNS returns pod IPs directly
+  publishNotReadyAddresses: false
+  selector:
+    app: my-app
+  ports:
+    - name: sync
+      port: 7073
+      targetPort: sync
+      protocol: TCP

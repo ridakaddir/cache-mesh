@@ -1,0 +1,18 @@
+{
+  "name": "example-express-lru",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx app.ts"
+  },
+  "dependencies": {
+    "cache-mesh": "workspace:*",
+    "express": "^4.19.2",
+    "lru-cache": "^10.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "tsx": "^4.16.0"
+  }
+}
