@@ -1,6 +1,6 @@
 {
   "name": "cache-mesh",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Peer-to-peer in-memory cache replication for Node.js apps on Kubernetes. No broker, no sidecar.",
   "type": "module",
   "main": "./dist/index.js",
