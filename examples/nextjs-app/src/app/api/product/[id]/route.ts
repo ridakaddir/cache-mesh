@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCache } from '../../../../lib/cache';
 
-// Important: Edge runtime is not supported — cache-sync needs node:http/node:dns.
+// Important: Edge runtime is not supported — cache-mesh needs node:http/node:dns.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 

@@ -40,7 +40,14 @@ export type CacheSyncOptions<V> = {
   host?: string;
   /** Stable per-process id (used as HLC tiebreaker). Default: hostname + random. */
   nodeId?: string;
-  /** How long tombstones survive. Default 5 minutes. */
+  /**
+   * How long tombstones survive. Default 5 minutes.
+   *
+   * Must exceed the longest expected peer partition duration: if a peer is
+   * isolated for longer than this and then rejoins, its older `set` for a
+   * deleted key can resurrect the value locally because the tombstone has
+   * been GC'd.
+   */
   tombstoneTtlMs?: number;
   /** Bootstrap (snapshot pull) timeout. Default 10_000. */
   bootstrapTimeoutMs?: number;
@@ -71,6 +78,12 @@ export function createCacheSync<V = unknown>(opts: CacheSyncOptions<V>): CacheSy
   }
   if (!opts.namespace) {
     throw new Error('cache-mesh: namespace is required');
+  }
+  if (
+    opts.outboxCapacity !== undefined &&
+    (!Number.isInteger(opts.outboxCapacity) || opts.outboxCapacity < 1)
+  ) {
+    throw new Error('cache-mesh: outboxCapacity must be a positive integer');
   }
 
   const port = opts.port ?? 7073;

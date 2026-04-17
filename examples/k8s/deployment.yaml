@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cache-sync-secret
+  name: cache-mesh-secret
   namespace: default
 type: Opaque
 stringData:
@@ -32,19 +32,19 @@ spec:
             - name: sync
               containerPort: 7073
           env:
-            # Downward API — cache-sync uses this to exclude itself from peer discovery.
+            # Downward API — cache-mesh uses this to exclude itself from peer discovery.
             - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-            - name: CACHE_SYNC_HOST
+            - name: CACHE_MESH_HOST
               value: "my-app-sync.default.svc.cluster.local"
-            - name: CACHE_SYNC_PORT
+            - name: CACHE_MESH_PORT
               value: "7073"
-            - name: CACHE_SYNC_KEY
+            - name: CACHE_MESH_KEY
               valueFrom:
                 secretKeyRef:
-                  name: cache-sync-secret
+                  name: cache-mesh-secret
                   key: hmac
           readinessProbe:
             httpGet:

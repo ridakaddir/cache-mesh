@@ -103,8 +103,15 @@ export class SyncClient<V> {
       const ok = await this.postOp(peer, queuedOp);
       if (!ok) {
         // Requeue this one and everything after it, preserving order.
+        const before = outbox.droppedCount();
         const idx = queued.indexOf(queuedOp);
         for (const remaining of queued.slice(idx)) outbox.push(remaining);
+        const dropped = outbox.droppedCount() - before;
+        if (dropped > 0) {
+          this.logger.warn(
+            `outbox for ${peer.host}:${peer.port} dropped ${dropped} ops (capacity ${this.outboxCap})`,
+          );
+        }
         return;
       }
     }

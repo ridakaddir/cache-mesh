@@ -4,7 +4,7 @@ import { createCacheSync } from './dist/index.js';
 
 const NODE_NAME = process.env.NODE_NAME ?? 'unknown';
 const PORT = Number(process.env.PORT ?? 3000);
-const SYNC_PORT = Number(process.env.CACHE_SYNC_PORT ?? 7073);
+const SYNC_PORT = Number(process.env.CACHE_MESH_PORT ?? 7073);
 const PEERS_CSV = process.env.PEERS ?? ''; // "host1:port,host2:port"
 
 const store = new LRUCache({ max: 10_000 });
@@ -21,7 +21,7 @@ console.log(`[${NODE_NAME}] starting with peers: ${JSON.stringify(peers)}`);
 const cache = createCacheSync({
   store,
   namespace: 'demo',
-  auth: { hmacSecret: process.env.CACHE_SYNC_KEY ?? 'demo-secret' },
+  auth: { hmacSecret: process.env.CACHE_MESH_KEY ?? 'demo-secret' },
   discovery: { type: 'static', peers },
   port: SYNC_PORT,
   host: '0.0.0.0',

@@ -14,12 +14,12 @@ export const getCache = (): CacheSync<Product> =>
     createCacheSync<Product>({
       store: new LRUCache<string, Product>({ max: 10_000 }),
       namespace: 'product-cache',
-      auth: { hmacSecret: process.env.CACHE_SYNC_KEY ?? 'dev-secret' },
+      auth: { hmacSecret: process.env.CACHE_MESH_KEY ?? 'dev-secret' },
       discovery: {
         type: 'dns',
-        host: process.env.CACHE_SYNC_HOST ?? 'my-app-sync.default.svc.cluster.local',
+        host: process.env.CACHE_MESH_HOST ?? 'my-app-sync.default.svc.cluster.local',
       },
-      port: Number(process.env.CACHE_SYNC_PORT ?? 7073),
+      port: Number(process.env.CACHE_MESH_PORT ?? 7073),
       logger: process.env.NODE_ENV === 'production' ? 'silent' : 'console',
     }),
   );

@@ -1,12 +1,12 @@
 /**
  * Next.js calls register() exactly once per server process, before the first
- * request. Perfect place to boot the cache-sync coordinator so discovery and
+ * request. Perfect place to boot the cache-mesh coordinator so discovery and
  * the HTTP sync port are up for incoming traffic.
  */
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
 
-  const { getCache } = await import('./src/lib/cache');
+  const { getCache } = await import('./lib/cache');
   const cache = getCache();
   await cache.start();
 
