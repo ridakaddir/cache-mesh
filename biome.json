@@ -27,6 +27,15 @@
     }
   },
   "files": {
-    "includes": ["src/**", "test/**", "examples/**", "*.ts", "*.js"]
+    "includes": [
+      "src/**",
+      "test/**",
+      "examples/**",
+      "*.ts",
+      "*.js",
+      "!**/node_modules",
+      "!**/.next",
+      "!**/dist"
+    ]
   }
 }
