@@ -1,4 +1,4 @@
-# Headless Service used only by cache-sync for peer discovery via DNS.
+# Headless Service used only by cache-mesh for peer discovery via DNS.
 # Keep your existing public ClusterIP Service for user traffic unchanged.
 apiVersion: v1
 kind: Service

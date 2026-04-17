@@ -25,6 +25,8 @@ export class StoreWrapper<V> {
   private meta = new Map<string, Meta>();
   private tombstoneTtlMs: number;
   private clearHLC: HLC | null = null;
+  /** Earliest `expiresAt` across all tombstones; gc scans are skipped until now >= this. */
+  private nextExpiryMs = Number.POSITIVE_INFINITY;
 
   constructor(
     private store: MapLikeStore<V>,
@@ -34,14 +36,14 @@ export class StoreWrapper<V> {
   }
 
   get(key: string): V | undefined {
-    this.gcTombstones();
+    this.maybeGcTombstones();
     const m = this.meta.get(key);
     if (m?.deleted) return undefined;
     return this.store.get(key);
   }
 
   has(key: string): boolean {
-    this.gcTombstones();
+    this.maybeGcTombstones();
     const m = this.meta.get(key);
     if (m?.deleted) return false;
     return this.store.has(key);
@@ -59,11 +61,9 @@ export class StoreWrapper<V> {
 
   localDelete(key: string, hlc: HLC): Op<V> {
     this.store.delete(key);
-    this.meta.set(key, {
-      hlc,
-      deleted: true,
-      expiresAt: Date.now() + this.tombstoneTtlMs,
-    });
+    const expiresAt = Date.now() + this.tombstoneTtlMs;
+    this.meta.set(key, { hlc, deleted: true, expiresAt });
+    if (expiresAt < this.nextExpiryMs) this.nextExpiryMs = expiresAt;
     return { type: 'delete', key, hlc };
   }
 
@@ -98,17 +98,15 @@ export class StoreWrapper<V> {
       this.meta.set(op.key, { hlc: op.hlc, deleted: false });
     } else {
       this.store.delete(op.key);
-      this.meta.set(op.key, {
-        hlc: op.hlc,
-        deleted: true,
-        expiresAt: Date.now() + this.tombstoneTtlMs,
-      });
+      const expiresAt = Date.now() + this.tombstoneTtlMs;
+      this.meta.set(op.key, { hlc: op.hlc, deleted: true, expiresAt });
+      if (expiresAt < this.nextExpiryMs) this.nextExpiryMs = expiresAt;
     }
     return true;
   }
 
   *entries(): IterableIterator<SnapshotEntry<V>> {
-    this.gcTombstones();
+    this.maybeGcTombstones();
     for (const [key, value] of this.store.entries()) {
       const m = this.meta.get(key);
       if (!m || m.deleted) continue;
@@ -129,14 +127,21 @@ export class StoreWrapper<V> {
       for (const [key] of this.store.entries()) this.store.delete(key);
     }
     this.meta.clear();
+    this.nextExpiryMs = Number.POSITIVE_INFINITY;
   }
 
-  private gcTombstones(): void {
+  private maybeGcTombstones(): void {
     const now = Date.now();
+    if (now < this.nextExpiryMs) return;
+    let next = Number.POSITIVE_INFINITY;
     for (const [key, m] of this.meta) {
-      if (m.deleted && m.expiresAt !== undefined && m.expiresAt <= now) {
+      if (!m.deleted || m.expiresAt === undefined) continue;
+      if (m.expiresAt <= now) {
         this.meta.delete(key);
+      } else if (m.expiresAt < next) {
+        next = m.expiresAt;
       }
     }
+    this.nextExpiryMs = next;
   }
 }

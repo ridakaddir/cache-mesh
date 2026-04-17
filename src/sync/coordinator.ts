@@ -22,6 +22,8 @@ export type CoordinatorOptions<V> = {
   logger?: Logger;
 };
 
+export type BootstrapOutcome = 'ok' | 'empty-cluster' | 'all-failed';
+
 export type CoordinatorEvents<V> = {
   ready: () => void;
   'sync:applied': (op: Op<V>) => void;
@@ -29,11 +31,16 @@ export type CoordinatorEvents<V> = {
   'peer:add': (peer: Peer) => void;
   'peer:remove': (peer: Peer) => void;
   'bootstrap:started': (peer: Peer) => void;
-  'bootstrap:finished': (summary: { from: Peer | null; applied: number }) => void;
+  'bootstrap:finished': (summary: {
+    from: Peer | null;
+    applied: number;
+    outcome: BootstrapOutcome;
+  }) => void;
   error: (err: unknown) => void;
 };
 
 const DEFAULT_BOOTSTRAP_TIMEOUT = 10_000;
+const MAX_HLC_SKEW_MS = 5 * 60 * 1000;
 
 export class Coordinator<V> extends EventEmitter {
   readonly wrapper: StoreWrapper<V>;
@@ -44,6 +51,9 @@ export class Coordinator<V> extends EventEmitter {
   private readonly logger: Logger;
   private readonly bootstrapTimeoutMs: number;
   private started = false;
+  private readonly onPeerAdd: (peer: Peer) => void;
+  private readonly onPeerRemove: (peer: Peer) => void;
+  private readonly onDiscoveryError: (err: unknown) => void;
 
   constructor(private readonly opts: CoordinatorOptions<V>) {
     super();
@@ -52,6 +62,9 @@ export class Coordinator<V> extends EventEmitter {
     this.wrapper = new StoreWrapper<V>(opts.store, { tombstoneTtlMs: opts.tombstoneTtlMs });
     this.discovery = opts.discovery;
     this.bootstrapTimeoutMs = opts.bootstrapTimeoutMs ?? DEFAULT_BOOTSTRAP_TIMEOUT;
+
+    // Guarantee emit('error') never throws if the user hasn't attached a listener.
+    this.on('error', (err) => this.logger.warn('cache-mesh error', err));
 
     this.server = new SyncServer<V>({
       port: opts.port,
@@ -71,26 +84,51 @@ export class Coordinator<V> extends EventEmitter {
       logger: this.logger,
     });
 
-    this.discovery.on('peer:add', (peer) => this.emit('peer:add', peer));
-    this.discovery.on('peer:remove', (peer) => {
+    this.onPeerAdd = (peer) => this.emit('peer:add', peer);
+    this.onPeerRemove = (peer) => {
       this.client.forgetPeer(peer.id);
       this.emit('peer:remove', peer);
-    });
-    this.discovery.on('error', (err) => this.emit('error', err));
+    };
+    this.onDiscoveryError = (err) => this.emit('error', err);
+
+    this.discovery.on('peer:add', this.onPeerAdd);
+    this.discovery.on('peer:remove', this.onPeerRemove);
+    this.discovery.on('error', this.onDiscoveryError);
+  }
+
+  private detachDiscoveryListeners(): void {
+    this.discovery.off('peer:add', this.onPeerAdd);
+    this.discovery.off('peer:remove', this.onPeerRemove);
+    this.discovery.off('error', this.onDiscoveryError);
   }
 
   async start(): Promise<void> {
     if (this.started) return;
-    this.started = true;
-    await this.server.start();
-    await this.discovery.start();
-    await this.bootstrap();
-    this.emit('ready');
+    const cleanups: Array<() => Promise<void>> = [];
+    try {
+      await this.server.start();
+      cleanups.push(() => this.server.stop());
+      await this.discovery.start();
+      cleanups.push(() => this.discovery.stop());
+      await this.bootstrap();
+      this.started = true;
+      this.emit('ready');
+    } catch (err) {
+      for (const stop of cleanups.reverse()) {
+        try {
+          await stop();
+        } catch (cleanupErr) {
+          this.logger.warn('cleanup after failed start() threw', cleanupErr);
+        }
+      }
+      throw err;
+    }
   }
 
   async stop(): Promise<void> {
     if (!this.started) return;
     this.started = false;
+    this.detachDiscoveryListeners();
     await this.discovery.stop();
     await this.server.stop();
     await this.client.close();
@@ -130,9 +168,18 @@ export class Coordinator<V> extends EventEmitter {
   }
 
   private onRemoteOp(op: Op<V>): void {
+    if (this.isSkewedFuture(op.hlc.p)) {
+      this.logger.warn(`rejecting op with far-future HLC (p=${op.hlc.p}, now=${Date.now()})`);
+      this.emit('sync:rejected', op);
+      return;
+    }
     this.clock.update(op.hlc);
     const accepted = this.wrapper.applyRemote(op);
     this.emit(accepted ? 'sync:applied' : 'sync:rejected', op);
+  }
+
+  private isSkewedFuture(p: number): boolean {
+    return p - Date.now() > MAX_HLC_SKEW_MS;
   }
 
   private async bootstrap(): Promise<void> {
@@ -158,6 +205,12 @@ export class Coordinator<V> extends EventEmitter {
 
       try {
         for await (const entry of stream) {
+          if (this.isSkewedFuture(entry.hlc.p)) {
+            this.logger.warn(
+              `skipping snapshot entry with far-future HLC from ${peer.host}:${peer.port}`,
+            );
+            continue;
+          }
           this.clock.update(entry.hlc);
           const ok = this.wrapper.applyRemote({
             type: 'set',
@@ -171,10 +224,16 @@ export class Coordinator<V> extends EventEmitter {
         break;
       } catch (err) {
         this.logger.warn(`snapshot stream from ${peer.host} failed`, err);
+        this.emit('error', err);
       }
     }
 
-    this.emit('bootstrap:finished', { from, applied });
+    const outcome: BootstrapOutcome = from
+      ? 'ok'
+      : tried.size === 0
+        ? 'empty-cluster'
+        : 'all-failed';
+    this.emit('bootstrap:finished', { from, applied, outcome });
   }
 }
 

@@ -1,3 +1,4 @@
+import { once } from 'node:events';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { Op, SnapshotEntry } from '../store/types.js';
 import { type Logger, noopLogger } from '../util/logger.js';
@@ -114,6 +115,9 @@ export class SyncServer<V> {
         this.opts.onOp(op);
       } catch (err) {
         this.logger.error('onOp threw', err);
+        res.statusCode = 500;
+        res.end();
+        return;
       }
       res.statusCode = 204;
       res.end();
@@ -137,8 +141,9 @@ export class SyncServer<V> {
       res.statusCode = 200;
       res.setHeader('content-type', 'application/x-ndjson');
       for (const entry of this.opts.snapshot()) {
-        res.write(JSON.stringify(entry));
-        res.write('\n');
+        if (res.destroyed) return;
+        const ok = res.write(`${JSON.stringify(entry)}\n`);
+        if (!ok) await once(res, 'drain');
       }
       res.end();
       return;

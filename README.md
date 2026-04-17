@@ -41,7 +41,7 @@ import { createCacheSync } from 'cache-mesh';
 const cache = createCacheSync({
   store: new LRUCache({ max: 10_000 }),
   namespace: 'product-cache',
-  auth: { hmacSecret: process.env.CACHE_SYNC_KEY! },
+  auth: { hmacSecret: process.env.CACHE_MESH_KEY! },
   discovery: {
     type: 'dns',
     host: 'my-app-sync.default.svc.cluster.local',
@@ -100,9 +100,9 @@ Pod spec highlights (`examples/k8s/deployment.yaml`):
 env:
   - name: POD_IP
     valueFrom: { fieldRef: { fieldPath: status.podIP } }
-  - name: CACHE_SYNC_HOST
+  - name: CACHE_MESH_HOST
     value: "my-app-sync.default.svc.cluster.local"
-  - name: CACHE_SYNC_KEY
+  - name: CACHE_MESH_KEY
     valueFrom: { secretKeyRef: { name: cache-mesh-secret, key: hmac } }
 ports:
   - { name: http,  containerPort: 3000 }
