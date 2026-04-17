@@ -1,5 +1,12 @@
 # example-express-lru
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies [[`77eb949`](https://github.com/ridakaddir/cache-mesh/commit/77eb9497086029b2fae192fc4a012e7362b57eaf)]:
+  - cache-mesh@0.2.1
+
 ## 0.0.1
 
 ### Patch Changes
