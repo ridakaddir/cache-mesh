@@ -19,6 +19,9 @@ export type CoordinatorOptions<V> = {
   tombstoneTtlMs?: number;
   requestTimeoutMs?: number;
   outboxCapacity?: number;
+  snapshotCompression?: 'gzip' | false;
+  maxConnectionsPerPeer?: number;
+  pipelining?: number;
   logger?: Logger;
 };
 
@@ -74,6 +77,7 @@ export class Coordinator<V> extends EventEmitter {
       logger: this.logger,
       onOp: (op) => this.onRemoteOp(op),
       snapshot: () => this.wrapper.entries(),
+      snapshotCompression: opts.snapshotCompression,
     });
 
     this.client = new SyncClient<V>({
@@ -81,6 +85,8 @@ export class Coordinator<V> extends EventEmitter {
       hmacSecret: opts.hmacSecret,
       requestTimeoutMs: opts.requestTimeoutMs,
       outboxCapacity: opts.outboxCapacity,
+      maxConnectionsPerPeer: opts.maxConnectionsPerPeer,
+      pipelining: opts.pipelining,
       logger: this.logger,
     });
 
