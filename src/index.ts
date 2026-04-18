@@ -57,6 +57,18 @@ export type CacheSyncOptions<V> = {
   outboxCapacity?: number;
   /** 'console' | 'silent' | your own Logger. Default 'silent'. */
   logger?: 'console' | 'silent' | Logger;
+  /** Optional transport tuning. */
+  transport?: {
+    /** Payload compression. Snapshots default to gzip; per-op compression deferred. */
+    compression?: {
+      /** Snapshot stream encoding. Default 'gzip'. Set false to send raw NDJSON. */
+      snapshot?: 'gzip' | false;
+    };
+    /** undici connection pool size per peer. Default 8. */
+    maxConnectionsPerPeer?: number;
+    /** undici pipelining depth — concurrent in-flight requests per connection. Default 1. */
+    pipelining?: number;
+  };
 };
 
 export type CacheSync<V> = {
@@ -104,6 +116,9 @@ export function createCacheSync<V = unknown>(opts: CacheSyncOptions<V>): CacheSy
     tombstoneTtlMs: opts.tombstoneTtlMs,
     requestTimeoutMs: opts.requestTimeoutMs,
     outboxCapacity: opts.outboxCapacity,
+    snapshotCompression: opts.transport?.compression?.snapshot,
+    maxConnectionsPerPeer: opts.transport?.maxConnectionsPerPeer,
+    pipelining: opts.transport?.pipelining,
     logger,
   });
 

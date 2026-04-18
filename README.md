@@ -178,8 +178,20 @@ createCacheSync<V>({
   requestTimeoutMs = 2_000,
   outboxCapacity = 1_000,  // per-peer retry buffer
   logger = 'silent',       // 'console' | 'silent' | Logger
+  transport: {
+    compression: { snapshot: 'gzip' },  // 'gzip' | false; default 'gzip'
+    maxConnectionsPerPeer: 8,           // undici pool size per peer
+    pipelining: 1,                      // undici in-flight depth per connection
+  },
 });
 ```
+
+**Snapshot compression** is on by default — bootstrap responses are gzipped
+when the requesting peer sends `Accept-Encoding: gzip` (the bundled client
+always does). Old peers that ignore the header still receive raw NDJSON, so
+mixed-version clusters work without coordination. Set
+`transport.compression.snapshot: false` to send uncompressed NDJSON
+(useful for `tcpdump`/`curl` debugging).
 
 Returns `{ start, stop, get, has, set, delete, clear, peers, on, off }`.
 

@@ -1,5 +1,6 @@
 import { once } from 'node:events';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { createGzip } from 'node:zlib';
 import type { Op, SnapshotEntry } from '../store/types.js';
 import { type Logger, noopLogger } from '../util/logger.js';
 import { NS_HEADER, SIG_HEADER, TS_HEADER, verify } from './auth.js';
@@ -14,6 +15,8 @@ export type SyncServerOptions<V> = {
   logger?: Logger;
   /** Max request body in bytes. Default 2 MiB. */
   maxBodyBytes?: number;
+  /** Compress snapshot stream when client sends `Accept-Encoding: gzip`. Default 'gzip'. */
+  snapshotCompression?: 'gzip' | false;
 };
 
 const DEFAULT_MAX_BODY = 2 * 1024 * 1024;
@@ -22,10 +25,12 @@ export class SyncServer<V> {
   private server: Server | undefined;
   private readonly logger: Logger;
   private readonly maxBody: number;
+  private readonly snapshotCompression: 'gzip' | false;
 
   constructor(private readonly opts: SyncServerOptions<V>) {
     this.logger = opts.logger ?? noopLogger;
     this.maxBody = opts.maxBodyBytes ?? DEFAULT_MAX_BODY;
+    this.snapshotCompression = opts.snapshotCompression ?? 'gzip';
   }
 
   async start(): Promise<void> {
@@ -140,12 +145,27 @@ export class SyncServer<V> {
       }
       res.statusCode = 200;
       res.setHeader('content-type', 'application/x-ndjson');
+
+      const useGzip =
+        this.snapshotCompression === 'gzip' && acceptsGzip(header(req, 'accept-encoding'));
+      let out: NodeJS.WritableStream = res;
+      if (useGzip) {
+        res.setHeader('content-encoding', 'gzip');
+        const gzip = createGzip();
+        gzip.on('error', (err) => {
+          this.logger.warn('snapshot gzip stream error', err);
+          res.destroy();
+        });
+        gzip.pipe(res);
+        out = gzip;
+      }
+
       for (const entry of this.opts.snapshot()) {
         if (res.destroyed) return;
-        const ok = res.write(`${JSON.stringify(entry)}\n`);
-        if (!ok) await once(res, 'drain');
+        const ok = out.write(`${JSON.stringify(entry)}\n`);
+        if (!ok) await once(out, 'drain');
       }
-      res.end();
+      out.end();
       return;
     }
 
@@ -158,6 +178,24 @@ function header(req: IncomingMessage, name: string): string | undefined {
   const v = req.headers[name];
   if (Array.isArray(v)) return v[0];
   return v;
+}
+
+function acceptsGzip(value: string | undefined): boolean {
+  if (!value) return false;
+  for (const part of value.toLowerCase().split(',')) {
+    const [name, ...params] = part
+      .trim()
+      .split(';')
+      .map((s) => s.trim());
+    if (name !== 'gzip' && name !== '*') continue;
+    const q = params.find((p) => p.startsWith('q='));
+    if (q) {
+      const n = Number(q.slice(2));
+      if (!Number.isFinite(n) || n <= 0) continue;
+    }
+    return true;
+  }
+  return false;
 }
 
 async function readBody(req: IncomingMessage, max: number): Promise<string | null> {

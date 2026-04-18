@@ -1,3 +1,4 @@
+import { createGunzip } from 'node:zlib';
 import { Agent, request } from 'undici';
 import type { Peer } from '../discovery/types.js';
 import type { Op, SnapshotEntry } from '../store/types.js';
@@ -13,13 +14,17 @@ export type SyncClientOptions = {
   requestTimeoutMs?: number;
   /** Per-peer outbox capacity. Default 1_000. */
   outboxCapacity?: number;
-  /** Concurrent peer broadcasts — undici connection pool size. Default 8. */
+  /** undici connection pool size per peer. Default 8. */
   maxConnectionsPerPeer?: number;
+  /** undici pipelining depth — concurrent in-flight requests per connection. Default 1. */
+  pipelining?: number;
   logger?: Logger;
 };
 
 const DEFAULT_TIMEOUT = 2_000;
 const DEFAULT_OUTBOX = 1_000;
+const DEFAULT_CONNECTIONS = 8;
+const DEFAULT_PIPELINING = 1;
 
 export class SyncClient<V> {
   private readonly agent: Agent;
@@ -35,8 +40,8 @@ export class SyncClient<V> {
     this.agent = new Agent({
       keepAliveTimeout: 30_000,
       keepAliveMaxTimeout: 60_000,
-      connections: opts.maxConnectionsPerPeer ?? 8,
-      pipelining: 1,
+      connections: opts.maxConnectionsPerPeer ?? DEFAULT_CONNECTIONS,
+      pipelining: opts.pipelining ?? DEFAULT_PIPELINING,
     });
   }
 
@@ -71,6 +76,7 @@ export class SyncClient<V> {
           [NS_HEADER]: this.opts.namespace,
           [TS_HEADER]: String(ts),
           [SIG_HEADER]: sig,
+          'accept-encoding': 'gzip',
         },
       });
       if (res.statusCode !== 200) {
@@ -78,7 +84,12 @@ export class SyncClient<V> {
         res.body.dump().catch(() => {});
         return null;
       }
-      return parseNdjson<SnapshotEntry<V>>(res.body);
+      const encoding = headerValue(res.headers['content-encoding']);
+      const stream =
+        encoding?.toLowerCase() === 'gzip'
+          ? (res.body.pipe(createGunzip()) as AsyncIterable<Uint8Array>)
+          : res.body;
+      return parseNdjson<SnapshotEntry<V>>(stream);
     } catch (err) {
       this.logger.warn(`snapshot from ${peer.host}:${peer.port} failed`, err);
       return null;
@@ -147,4 +158,9 @@ export class SyncClient<V> {
       return false;
     }
   }
+}
+
+function headerValue(v: string | string[] | undefined): string | undefined {
+  if (Array.isArray(v)) return v[0];
+  return v;
 }
